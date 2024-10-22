@@ -69,7 +69,8 @@ class RoseTTAFoldModule(nn.Module):
                 t1d=None, t2d=None, xyz_t=None, alpha_t=None,
                 msa_prev=None, pair_prev=None, state_prev=None,
                 return_raw=False, return_full=False, return_infer=False,
-                use_checkpoint=False, motif_mask=None, i_cycle=None, n_cycle=None):
+                use_checkpoint=False, motif_mask=None, i_cycle=None, n_cycle=None, 
+                return_states=False):
 
         B, N, L = msa_latent.shape[:3]
         # Get embeddings
@@ -99,9 +100,14 @@ class RoseTTAFoldModule(nn.Module):
         
         # Predict coordinates from given inputs
         is_frozen_residue = motif_mask if self.freeze_track_motif else torch.zeros_like(motif_mask).bool()
-        msa, pair, R, T, alpha_s, state = self.simulator(seq, msa_latent, msa_full, pair, xyz[:,:,:3],
-                                                         state, idx, use_checkpoint=use_checkpoint,
-                                                         motif_mask=is_frozen_residue)
+        if return_states:
+            msa, pair, R, T, alpha_s, state, states = self.simulator(seq, msa_latent, msa_full, pair, xyz[:,:,:3],
+                                                            state, idx, use_checkpoint=use_checkpoint,
+                                                            motif_mask=is_frozen_residue, return_states=return_states)
+        else:
+            msa, pair, R, T, alpha_s, state = self.simulator(seq, msa_latent, msa_full, pair, xyz[:,:,:3],
+                                                            state, idx, use_checkpoint=use_checkpoint,
+                                                            motif_mask=is_frozen_residue, return_states=return_states)
         
         if return_raw:
             # get last structure
@@ -125,7 +131,10 @@ class RoseTTAFoldModule(nn.Module):
             pred_lddt = nn.Softmax(dim=1)(lddt)
             pred_lddt = torch.sum(lddt_bins[None,:,None]*pred_lddt, dim=1)
 
-            return msa[:,0], pair, xyz, state, alpha_s[-1], logits_aa.permute(0,2,1), pred_lddt
+            if return_states:
+                return msa[:,0], pair, xyz, state, alpha_s[-1], logits_aa.permute(0,2,1), pred_lddt, states
+            else:
+                return msa[:,0], pair, xyz, state, alpha_s[-1], logits_aa.permute(0,2,1), pred_lddt
 
         #
         # predict distogram & orientograms
@@ -137,4 +146,7 @@ class RoseTTAFoldModule(nn.Module):
         # get all intermediate bb structures
         xyz = einsum('rbnij,bnaj->rbnai', R, xyz[:,:,:3]-xyz[:,:,1].unsqueeze(-2)) + T.unsqueeze(-2)
 
-        return logits, logits_aa, logits_exp, xyz, alpha_s, lddt
+        if return_states:
+            return logits, logits_aa, logits_exp, xyz, alpha_s, lddt, states
+        else:
+            return logits, logits_aa, logits_exp, xyz, alpha_s, lddt

@@ -384,7 +384,7 @@ class IterativeSimulator(nn.Module):
         self.proj_state2 = init_lecun_normal(self.proj_state2)
         nn.init.zeros_(self.proj_state2.bias)
 
-    def forward(self, seq, msa, msa_full, pair, xyz_in, state, idx, use_checkpoint=False, motif_mask=None):
+    def forward(self, seq, msa, msa_full, pair, xyz_in, state, idx, use_checkpoint=False, motif_mask=None, return_states=False):
         """
         input:
            seq: query sequence (B, L)
@@ -395,6 +395,7 @@ class IterativeSimulator(nn.Module):
            state: initial state features containing mixture of query seq, sidechain, accuracy info (B, L, d_state)
            idx: residue index
            motif_mask: bool tensor, True if motif position that is frozen, else False(L,) 
+           return_states: bool, whether to track the states or not
         """
 
         B, L = pair.shape[:2]
@@ -408,6 +409,10 @@ class IterativeSimulator(nn.Module):
         
         state = self.proj_state(state)
 
+        layer_idx = 0
+        states = {}
+        states[layer_idx] = state[0].mean(dim=0).detach().cpu()
+        layer_idx += 1
         R_s = list()
         T_s = list()
         alpha_s = list()
@@ -429,6 +434,8 @@ class IterativeSimulator(nn.Module):
             R_s.append(R_in)
             T_s.append(T_in)
             alpha_s.append(alpha)
+            states[layer_idx] = state[0].mean(dim=0).detach().cpu()
+            layer_idx += 1
 
         for i_m in range(self.n_main_block):
             R_in = R_in.detach()
@@ -448,6 +455,8 @@ class IterativeSimulator(nn.Module):
             R_s.append(R_in)
             T_s.append(T_in)
             alpha_s.append(alpha)
+            states[layer_idx] = state[0].mean(dim=0).detach().cpu()
+            layer_idx += 1
        
         state = self.proj_state2(state)
         for i_m in range(self.n_ref_block):
@@ -466,9 +475,14 @@ class IterativeSimulator(nn.Module):
             R_s.append(R_in)
             T_s.append(T_in)
             alpha_s.append(alpha)
+            states[layer_idx] = state[0].mean(dim=0).detach().cpu()
+            layer_idx += 1
 
         R_s = torch.stack(R_s, dim=0)
         T_s = torch.stack(T_s, dim=0)
         alpha_s = torch.stack(alpha_s, dim=0)
 
-        return msa, pair, R_s, T_s, alpha_s, state
+        if return_states:
+            return msa, pair, R_s, T_s, alpha_s, state, states
+        else:
+            return msa, pair, R_s, T_s, alpha_s, state

@@ -1,6 +1,8 @@
 # Base inference Configuration.
 
 inference:
+  input_path: /tmp/ec/pdbs/
+  output_path: ~/scratch/RFdiffusion/outputs/ec/
   input_pdb: null
   num_designs: 10
   design_startnum: 0

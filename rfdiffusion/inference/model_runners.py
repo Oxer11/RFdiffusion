@@ -614,6 +614,100 @@ class Sampler:
 
         return px0, x_t_1, seq_t_1, plddt
 
+    def extract_representation(self, input_pdb):
+        #######################
+        ### Parse input pdb ###
+        #######################
+
+        self.target_feats = iu.process_target(input_pdb, parse_hetatom=False, center=False)
+
+        ################################
+        ### Generate specific contig ###
+        ################################
+
+        # Generate a specific contig from the range of possibilities specified at input
+
+        self.contig_map = self.construct_contig(self.target_feats)
+        self.mappings = self.contig_map.get_mappings()
+        self.mask_seq = torch.from_numpy(self.contig_map.inpaint_seq)[None,:]
+        self.mask_str = torch.from_numpy(self.contig_map.inpaint_str)[None,:]
+        self.binderlen =  len(self.contig_map.inpaint)     
+
+        ###################################
+        ### Initialize other attributes ###
+        ###################################
+
+        xyz_27 = self.target_feats['xyz_27']
+        mask_27 = self.target_feats['mask_27']
+        seq_orig = self.target_feats['seq']
+        L_mapped = len(self.contig_map.ref)
+        contig_map=self.contig_map
+
+        self.diffusion_mask = self.mask_str
+        self.chain_idx=['A' if i < self.binderlen else 'B' for i in range(L_mapped)]
+        
+        ####################################
+        ### Generate initial coordinates ###
+        ####################################
+
+        #################################
+        ### Generate initial sequence ###
+        #################################
+
+        seq_init = torch.full((1,L_mapped), 21).squeeze() # 21 is the mask token
+        seq_init[contig_map.hal_idx0] = seq_orig[contig_map.ref_idx0]
+        
+        # Unmask sequence if desired
+        if self._conf.contigmap.provide_seq is not None:
+            seq_init[self.mask_seq.squeeze()] = seq_orig[self.mask_seq.squeeze()] 
+
+        seq_init[~self.mask_seq.squeeze()] = 21
+        seq_init    = torch.nn.functional.one_hot(seq_init, num_classes=22).float() # [L,22]
+        seq_orig = torch.nn.functional.one_hot(seq_orig, num_classes=22).float() # [L,22]
+
+        x_t = torch.clone(xyz_27[:, :14, :])
+    
+        '''Generate the next pose that the model should be supplied at timestep t-1.
+
+        Args:
+            t (int): The timestep that has just been predicted
+            seq_t (torch.tensor): (L,22) The sequence at the beginning of this timestep
+            x_t (torch.tensor): (L,14,3) The residue positions at the beginning of this timestep
+            seq_init (torch.tensor): (L,22) The initialized sequence used in updating the sequence.
+            
+        Returns:
+            px0: (L,14,3) The model's prediction of x0.
+            x_t_1: (L,14,3) The updated positions of the next step.
+            seq_t_1: (L,22) The updated sequence of the next step.
+            tors_t_1: (L, ?) The updated torsion angles of the next  step.
+            plddt: (L, 1) Predicted lDDT of x0.
+        '''
+        msa_masked, msa_full, seq_in, xt_in, idx_pdb, t1d, t2d, xyz_t, alpha_t = self._preprocess(
+            seq_init, x_t, 0)
+
+        msa_prev = None
+        pair_prev = None
+        state_prev = None
+
+        with torch.no_grad():
+            msa_prev, pair_prev, px0, state_prev, alpha, logits, plddt, states = self.model(msa_masked,
+                                msa_full,
+                                seq_in,
+                                xt_in,
+                                idx_pdb,
+                                t1d=t1d,
+                                t2d=t2d,
+                                xyz_t=xyz_t,
+                                alpha_t=alpha_t,
+                                msa_prev = msa_prev,
+                                pair_prev = pair_prev,
+                                state_prev = state_prev,
+                                t=torch.tensor(0),
+                                return_infer=True,
+                                motif_mask=self.diffusion_mask.squeeze().to(self.device),
+                                return_states=True)
+
+        return states
 
 class SelfConditioning(Sampler):
     """
