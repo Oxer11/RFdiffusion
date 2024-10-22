@@ -621,18 +621,6 @@ class Sampler:
 
         self.target_feats = iu.process_target(input_pdb, parse_hetatom=False, center=False)
 
-        ################################
-        ### Generate specific contig ###
-        ################################
-
-        # Generate a specific contig from the range of possibilities specified at input
-
-        self.contig_map = self.construct_contig(self.target_feats)
-        self.mappings = self.contig_map.get_mappings()
-        self.mask_seq = torch.from_numpy(self.contig_map.inpaint_seq)[None,:]
-        self.mask_str = torch.from_numpy(self.contig_map.inpaint_str)[None,:]
-        self.binderlen =  len(self.contig_map.inpaint)     
-
         ###################################
         ### Initialize other attributes ###
         ###################################
@@ -640,11 +628,10 @@ class Sampler:
         xyz_27 = self.target_feats['xyz_27']
         mask_27 = self.target_feats['mask_27']
         seq_orig = self.target_feats['seq']
-        L_mapped = len(self.contig_map.ref)
-        contig_map=self.contig_map
+        L_mapped = len(seq_orig)
 
-        self.diffusion_mask = self.mask_str
-        self.chain_idx=['A' if i < self.binderlen else 'B' for i in range(L_mapped)]
+        self.diffusion_mask = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
+        self.mask_seq = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
         
         ####################################
         ### Generate initial coordinates ###
@@ -655,7 +642,6 @@ class Sampler:
         #################################
 
         seq_init = torch.full((1,L_mapped), 21).squeeze() # 21 is the mask token
-        seq_init[contig_map.hal_idx0] = seq_orig[contig_map.ref_idx0]
         
         # Unmask sequence if desired
         if self._conf.contigmap.provide_seq is not None:
