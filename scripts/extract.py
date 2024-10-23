@@ -56,12 +56,19 @@ def main(conf: HydraConfig) -> None:
 
     input_path = os.path.expanduser(conf.inference.data_path)
     output_path = os.path.expanduser(conf.inference.output_path)
+    os.makedirs(output_path, exist_ok=True)
+    num_split = conf.num_split
+    split_id = conf.split_id
     pdbs = sorted(os.listdir(input_path))
+    size = len(pdbs) // num_split + 1
+    pdbs = pdbs[size * split_id: size * (split_id + 1)]
     for pdb in tqdm(pdbs):
         pdb_path = os.path.join(input_path, pdb)
-        states = sampler.extract_representation(pdb_path)
         pdb_name = pdb[:-4]
         pkl_path = os.path.join(output_path, pdb_name+".pt")
+        if os.path.exist(pkl_path):
+            continue
+        states = sampler.extract_representation(pdb_path)
         output_dict = {'label': pdb_name, 'mean_representations': states}
         torch.save(output_dict, pkl_path)
 

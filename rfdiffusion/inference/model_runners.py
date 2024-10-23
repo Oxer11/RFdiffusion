@@ -434,8 +434,6 @@ class Sampler:
 
         L = seq.shape[0]
         T = self.T
-        binderlen = self.binderlen
-        target_res = self.ppi_conf.hotspot_res
 
         ##################
         ### msa_masked ###
@@ -497,7 +495,7 @@ class Sampler:
         ###########      
         ### idx ###
         ###########
-        idx = torch.tensor(self.contig_map.rf)[None]
+        idx = torch.tensor([i for i in range(L)])[None]
 
         ###############
         ### alpha_t ###
@@ -631,6 +629,7 @@ class Sampler:
         L_mapped = len(seq_orig)
 
         self.diffusion_mask = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
+        self.mask_str = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
         self.mask_seq = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
         
         ####################################

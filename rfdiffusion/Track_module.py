@@ -411,7 +411,7 @@ class IterativeSimulator(nn.Module):
 
         layer_idx = 0
         states = {}
-        states[layer_idx] = state[0].mean(dim=0).detach().cpu()
+        states[layer_idx] = msa[0, 0].mean(dim=0).detach().cpu()
         layer_idx += 1
         R_s = list()
         T_s = list()
@@ -434,8 +434,6 @@ class IterativeSimulator(nn.Module):
             R_s.append(R_in)
             T_s.append(T_in)
             alpha_s.append(alpha)
-            states[layer_idx] = state[0].mean(dim=0).detach().cpu()
-            layer_idx += 1
 
         for i_m in range(self.n_main_block):
             R_in = R_in.detach()
@@ -455,7 +453,7 @@ class IterativeSimulator(nn.Module):
             R_s.append(R_in)
             T_s.append(T_in)
             alpha_s.append(alpha)
-            states[layer_idx] = state[0].mean(dim=0).detach().cpu()
+            states[layer_idx] = msa[0, 0].mean(dim=0).detach().cpu()
             layer_idx += 1
        
         state = self.proj_state2(state)
@@ -475,8 +473,6 @@ class IterativeSimulator(nn.Module):
             R_s.append(R_in)
             T_s.append(T_in)
             alpha_s.append(alpha)
-            states[layer_idx] = state[0].mean(dim=0).detach().cpu()
-            layer_idx += 1
 
         R_s = torch.stack(R_s, dim=0)
         T_s = torch.stack(T_s, dim=0)

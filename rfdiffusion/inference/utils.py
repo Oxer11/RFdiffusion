@@ -553,7 +553,7 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
             idx = pdb_idx.index((chain, resNo))
             # for i_atm, tgtatm in enumerate(util.aa2long[util.aa2num[aa]]):
             for i_atm, tgtatm in enumerate(
-                util.aa2long[util.aa2num[aa]][:14]
+                util.aa2long[util.aa2num.get(aa, 20)][:14]
                 ):
                 if (
                     tgtatm is not None and tgtatm.strip() == atom.strip()
@@ -613,6 +613,11 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
 def process_target(pdb_path, parse_hetatom=False, center=True):
     # Read target pdb and extract features.
     target_struct = parse_pdb(pdb_path, parse_hetatom=parse_hetatom)
+    if len(target_struct["seq"]) > 384:
+        target_struct["seq"] = target_struct["seq"][:384]
+        target_struct["xyz"] = target_struct["xyz"][:384]
+        target_struct["mask"] = target_struct["mask"][:384]
+
 
     # Zero-center positions
     ca_center = target_struct["xyz"][:, :1, :].mean(axis=0, keepdims=True)

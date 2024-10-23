@@ -1,8 +1,11 @@
 # Base inference Configuration.
 
+num_split: 5
+split_id: 0
+
 inference:
-  data_path: /tmp/ec/pdbs/
-  output_path: ~/scratch/RFdiffusion/outputs/ec/
+  data_path: /tmp/fold/pdbs/
+  output_path: ~/scratch/RFdiffusion/outputs/fold/
   input_pdb: null
   num_designs: 10
   design_startnum: 0
