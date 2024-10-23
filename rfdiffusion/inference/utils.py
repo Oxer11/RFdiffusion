@@ -520,6 +520,7 @@ def parse_pdb(filename, **kwargs):
     """extract xyz coords for all heavy atoms"""
     with open(filename,"r") as f:
         lines=f.readlines()
+    print(filename)
     return parse_pdb_lines(lines, **kwargs)
 
 
@@ -551,13 +552,16 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
     for l in lines:
         if l[:4] != "ATOM":
             continue
+        idx = max(len(l) - 81, 0)
         try:
             _ = int(l[22+idx:26+idx].strip())
             x = float(l[30+idx:38+idx].strip())
+            y = float(l[38+idx:46+idx].strip())
         except ValueError:
             idx += 1
             _ = int(l[22+idx:26+idx].strip())
             x = float(l[30+idx:38+idx].strip())
+            y = float(l[38+idx:46+idx].strip())
         chain, resNo, atom, aa = (
             l[21:22],
             int(l[22+idx:26+idx]),
@@ -565,7 +569,7 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
             l[17:20],
         )
         if (chain,resNo) in pdb_idx:
-            idx = pdb_idx.index((chain, resNo))
+            _idx = pdb_idx.index((chain, resNo))
             # for i_atm, tgtatm in enumerate(util.aa2long[util.aa2num[aa]]):
             for i_atm, tgtatm in enumerate(
                 util.aa2long[util.aa2num.get(aa, 20)][:14]
@@ -573,7 +577,7 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
                 if (
                     tgtatm is not None and tgtatm.strip() == atom.strip()
                     ):  # ignore whitespace
-                    xyz[idx, i_atm, :] = [float(l[30+idx:38+idx]), float(l[38+idx:46+idx]), float(l[46+idx:54+idx])]
+                    xyz[_idx, i_atm, :] = [float(l[30+idx:38+idx]), float(l[38+idx:46+idx]), float(l[46+idx:54+idx])]
                     break
 
     # save atom mask
@@ -617,7 +621,7 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
                         name=l[16:20],
                     )
                 )
-                xyz_het.append([float(l[30+idx:38+idx]), float(l[38+idx:46+idx]), float(l[46+idx:54+idx])])
+                xyz_het.append([float(l[30:38]), float(l[38:46]), float(l[46:54])])
 
         out["xyz_het"] = np.array(xyz_het)
         out["info_het"] = info_het

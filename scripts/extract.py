@@ -66,7 +66,7 @@ def main(conf: HydraConfig) -> None:
         pdb_path = os.path.join(input_path, pdb)
         pdb_name = pdb[:-4]
         pkl_path = os.path.join(output_path, pdb_name+".pt")
-        if os.path.exist(pkl_path):
+        if os.path.exists(pkl_path):
             continue
         states = sampler.extract_representation(pdb_path)
         output_dict = {'label': pdb_name, 'mean_representations': states}
