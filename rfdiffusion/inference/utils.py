@@ -528,12 +528,20 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
     res, pdb_idx = [],[]
     for l in lines:
         if l[:4] == "ATOM" and l[12:16].strip() == "CA":
-            res.append((l[22:26], l[17:20]))
+            idx = max(len(l) - 81, 0)
+            try:
+                _ = int(l[22+idx:26+idx].strip())
+                x = float(l[30+idx:38+idx].strip())
+            except ValueError:
+                idx += 1
+                _ = int(l[22+idx:26+idx].strip())
+                x = float(l[30+idx:38+idx].strip())
+            res.append((l[22+idx:26+idx], l[17:20]))
             # chain letter, res num
-            pdb_idx.append((l[21:22].strip(), int(l[22:26].strip())))
+            pdb_idx.append((l[21:22].strip(), int(l[22+idx:26+idx].strip())))
     seq = [util.aa2num[r[1]] if r[1] in util.aa2num.keys() else 20 for r in res]
     pdb_idx = [
-        (l[21:22].strip(), int(l[22:26].strip()))
+        (l[21:22].strip(), int(l[22+idx:26+idx].strip()))
         for l in lines
         if l[:4] == "ATOM" and l[12:16].strip() == "CA"
     ]  # chain letter, res num
@@ -543,9 +551,16 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
     for l in lines:
         if l[:4] != "ATOM":
             continue
+        try:
+            _ = int(l[22+idx:26+idx].strip())
+            x = float(l[30+idx:38+idx].strip())
+        except ValueError:
+            idx += 1
+            _ = int(l[22+idx:26+idx].strip())
+            x = float(l[30+idx:38+idx].strip())
         chain, resNo, atom, aa = (
             l[21:22],
-            int(l[22:26]),
+            int(l[22+idx:26+idx]),
             " " + l[12:16].strip().ljust(3),
             l[17:20],
         )
@@ -558,7 +573,7 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
                 if (
                     tgtatm is not None and tgtatm.strip() == atom.strip()
                     ):  # ignore whitespace
-                    xyz[idx, i_atm, :] = [float(l[30:38]), float(l[38:46]), float(l[46:54])]
+                    xyz[idx, i_atm, :] = [float(l[30+idx:38+idx]), float(l[38+idx:46+idx]), float(l[46+idx:54+idx])]
                     break
 
     # save atom mask
@@ -602,7 +617,7 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
                         name=l[16:20],
                     )
                 )
-                xyz_het.append([float(l[30:38]), float(l[38:46]), float(l[46:54])])
+                xyz_het.append([float(l[30+idx:38+idx]), float(l[38+idx:46+idx]), float(l[46+idx:54+idx])])
 
         out["xyz_het"] = np.array(xyz_het)
         out["info_het"] = info_het
