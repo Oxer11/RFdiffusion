@@ -612,7 +612,7 @@ class Sampler:
 
         return px0, x_t_1, seq_t_1, plddt
 
-    def extract_representation(self, input_pdb):
+    def extract_representation(self, input_pdb, use_seq=False):
         #######################
         ### Parse input pdb ###
         #######################
@@ -630,7 +630,10 @@ class Sampler:
 
         self.diffusion_mask = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
         self.mask_str = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
-        self.mask_seq = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
+        if use_seq:
+            self.mask_seq = torch.ones((1, L_mapped), device=self.device, dtype=torch.bool)
+        else:
+            self.mask_seq = torch.zeros((1, L_mapped), device=self.device, dtype=torch.bool)
         
         ####################################
         ### Generate initial coordinates ###

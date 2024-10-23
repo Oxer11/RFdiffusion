@@ -68,7 +68,7 @@ def main(conf: HydraConfig) -> None:
         pkl_path = os.path.join(output_path, pdb_name+".pt")
         if os.path.exists(pkl_path):
             continue
-        states = sampler.extract_representation(pdb_path)
+        states = sampler.extract_representation(pdb_path, use_seq=conf.get("use_seq", False))
         output_dict = {'label': pdb_name, 'mean_representations': states}
         torch.save(output_dict, pkl_path)
 
